@@ -1,38 +1,46 @@
+"use client";
 import { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 
 export default function RegisterPage() {
   const router = useRouter();
-
+  const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] =
-    useState("");
+  const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("");
 
-  const [message, setMessage] =
-    useState("");
-
-  const handleRegister = async (
-    e: React.FormEvent<HTMLFormElement>
-  ) => {
+  const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    const { error } =
-      await supabase.auth.signUp({
-        email,
-        password,
-      });
+    if (!nombre || !email || !password) {
+      setMessage("Por favor completa todos los campos");
+      return;
+    }
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { nombre } },
+    });
 
     if (error) {
       setMessage(error.message);
       return;
     }
 
-    setMessage("Cuenta creada");
+    // Insertar en tabla usuarios
+    if (data.user) {
+      await supabase.from("usuarios").insert([
+        { id: data.user.id, nombre, email },
+      ]);
+    }
+
+    setMessage("Cuenta creada correctamente ✅");
 
     setTimeout(() => {
       router.push("/login");
-    }, 1000);
+    }, 1500);
   };
 
   return (
@@ -42,47 +50,41 @@ export default function RegisterPage() {
           Registro
         </h1>
 
-        <form
-          onSubmit={handleRegister}
-          className="flex flex-col gap-4"
-        >
+        <form onSubmit={handleRegister} className="flex flex-col gap-4">
+          <input
+            type="text"
+            placeholder="Nombre"
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            className="bg-[#1b2436] text-white p-3 rounded-lg outline-none"
+          />
           <input
             type="email"
             placeholder="Correo"
             value={email}
-            onChange={(e) =>
-              setEmail(e.target.value)
-            }
+            onChange={(e) => setEmail(e.target.value)}
             className="bg-[#1b2436] text-white p-3 rounded-lg outline-none"
           />
-
           <input
             type="password"
             placeholder="Contraseña"
             value={password}
-            onChange={(e) =>
-              setPassword(e.target.value)
-            }
+            onChange={(e) => setPassword(e.target.value)}
             className="bg-[#1b2436] text-white p-3 rounded-lg outline-none"
           />
-
           <button className="bg-[#1f80ff] text-white p-3 rounded-lg font-semibold">
             Registrarse
           </button>
         </form>
 
         <button
-          onClick={() =>
-            router.push("/login")
-          }
+          onClick={() => router.push("/login")}
           className="text-[#1f80ff] mt-5 w-full"
         >
           Ya tengo cuenta
         </button>
 
-        <p className="text-green-400 text-center mt-4">
-          {message}
-        </p>
+        <p className="text-green-400 text-center mt-4">{message}</p>
       </div>
     </div>
   );
